@@ -328,7 +328,18 @@ function parseCSV(text){
   if (field.length) rows.push(field.split("\u0001").map(c=>c.replace(/\u0001/g, "").trim()));
   if (rows.length && rows[0].some(h => /tur|aciklama|tutar|tarih|yetkili/i.test(h))) rows.shift();
   return rows;
-}
+}MIT License
+
+Copyright (c) 2025 Mutlu Kaya
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+[...standard MIT text continues here...]
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, function(m){
