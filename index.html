@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fiş Defteri</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;line-height:1.4;color:#222}
+    body{max-width:980px;margin:24px auto;padding:16px}
+    .row{margin-bottom:10px;display:flex;gap:10px;align-items:center}
+    label{width:110px}
+    input[type="text"],input[type="number"],input[type="date"],select,input#search{flex:1;padding:6px;border:1px solid #ccc;border-radius:4px}
+    .actions{display:flex;gap:8px;margin-top:8px}
+    button{padding:8px 12px;border-radius:6px;border:1px solid #888;background:#f3f3f3;cursor:pointer}
+    button.secondary{background:#fff}
+    button.danger{background:#ffdede;border-color:#ff7b7b}
+    .table-section{margin-top:18px;overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border:1px solid #e6e6e6;text-align:left}
+    th{cursor:pointer;background:#fafafa;user-select:none}
+    tr.gelir td{background:#f0fff4}
+    tr.gider td{background:#fff6f6}
+    .actions .edit,.actions .del{padding:4px 8px}
+    tfoot td{font-weight:600;background:#f9f9f9}
+    .toplam td{background:#fff}
+    small{color:#666}
+    .export-buttons{display:flex;gap:8px;align-items:center}
+    #search{max-width:320px;margin-bottom:8px}
+    .empty{color:#666;text-align:center;padding:12px}
+  </style>
+</head>
+<body>
+  <section class="form-section">
+    <form id="fisForm" onsubmit="return false;">
+      <div class="row">
+        <label for="tur">İşlem Türü</label>
+        <select id="tur" required>
+          <option value="">-- Seçiniz --</option>
+          <option value="gelir">Gelir (Giriş)</option>
+          <option value="gider">Gider (Çıkış)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="aciklama">Açıklama</label>
+        <input type="text" id="aciklama" required />
+      </div>
+
+      <div class="row">
+        <label for="tutar">Tutar (₺)</label>
+        <input type="number" id="tutar" step="0.01" min="0.01" required />
+      </div>
+
+      <div class="row">
+        <label for="tarih">Tarih</label>
+        <input type="date" id="tarih" required />
+      </div>
+
+      <div class="row">
+        <label for="yetkili">Yetkili</label>
+        <input type="text" id="yetkili" required />
+      </div>
+
+      <div class="actions">
+        <button id="kaydetBtn" type="button">Kaydet</button>
+        <button id="temizleForm" type="button" class="secondary">Temizle</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="controls">
+    <input id="search" placeholder="Açıklama/Yetkili ara..." />
+    <div class="export-buttons">
+      <button id="exportCsv">CSV İndir</button>
+      <button id="exportJson">JSON İndir</button>
+      <input id="importFile" type="file" accept=".json,.csv" />
+      <button id="clearAll" class="danger">Hepsini Sil</button>
+    </div>
+  </section>
+
+  <section class="table-section">
+    <table id="fisTablosu">
+      <thead>
+        <tr>
+          <th data-sort="tur">Tür</th>
+          <th data-sort="aciklama">Açıklama</th>
+          <th data-sort="tutar">Tutar</th>
+          <th data-sort="tarih">Tarih</th>
+          <th data-sort="yetkili">Yetkili</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr class="toplam">
+          <td colspan="2">Toplam Gelir</td>
+          <td id="topGelir">0.00 ₺</td>
+          <td colspan="3"></td>
+        </tr>
+        <tr class="toplam">
+          <td colspan="2">Toplam Gider</td>
+          <td id="topGider">0.00 ₺</td>
+          <td colspan="3"></td>
+        </tr>
+        <tr class="toplam">
+          <td colspan="2">Kasa Bakiyesi</td>
+          <td id="net">0.00 ₺</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div id="emptyHint" class="empty" style="display:none">Henüz kayıt yok. Formu doldurup "Kaydet"e basın.</div>
+  </section>
+
+  <footer>
+    <small>Hazırlayan: Otomatik dönüştürücü · Veriler tarayıcıda saklanır (localStorage)</small>
+  </footer>
+
+  <script>
+    // Simple fiş defteri uygulaması - localStorage kullanır
+    (function(){
+      const LS_KEY = 'fisler_v1';
+      const form = document.getElementById('fisForm');
+      const turEl = document.getElementById('tur');
+      const aciklamaEl = document.getElementById('aciklama');
+      const tutarEl = document.getElementById('tutar');
+      const tarihEl = document.getElementById('tarih');
+      const yetkiliEl = document.getElementById('yetkili');
+      const kaydetBtn = document.getElementById('kaydetBtn');
+      const temizleFormBtn = document.getElementById('temizleForm');
+      const tbody = document.querySelector('#fisTablosu tbody');
+      const topGelirEl = document.getElementById('topGelir');
+      const topGiderEl = document.getElementById('topGider');
+      const netEl = document.getElementById('net');
+      const searchEl = document.getElementById('search');
+      const exportCsvBtn = document.getElementById('exportCsv');
+      const exportJsonBtn = document.getElementById('exportJson');
+      const importFileEl = document.getElementById('importFile');
+      const clearAllBtn = document.getElementById('clearAll');
+      const emptyHint = document.getElementById('emptyHint');
+      const headers = Array.from(document.querySelectorAll('th[data-sort]'));
+
+      let fisler = [];
+      let editingId = null;
+      let sortState = { key: 'tarih', dir: 'desc' }; // default: en yeni üstte
+
+      // utils
+      function uid(){
+        return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+      }
+      function saveToStorage(){ localStorage.setItem(LS_KEY, JSON.stringify(fisler)); }
+      function loadFromStorage(){
+        try{
+          const raw = localStorage.getItem(LS_KEY);
+          if(!raw) return [];
+          const parsed = JSON.parse(raw);
+          if(Array.isArray(parsed)) return parsed;
+          return [];
+        }catch(e){ return []; }
+      }
+      function formatMoney(v){
+        const n = Number(v) || 0;
+        return n.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ₺';
+      }
+      function isoDateString(d){
+        if(!d) return '';
+        const dt = new Date(d);
+        if(isNaN(dt)) return d;
+        return dt.toISOString().slice(0,10);
+      }
+
+      // render
+      function render(){
+        const q = searchEl.value.trim().toLowerCase();
+        let items = fisler.slice();
+
+        // filtering
+        if(q){
+          items = items.filter(it =>
+            (it.aciklama || '').toLowerCase().includes(q) ||
+            (it.yetkili || '').toLowerCase().includes(q)
+          );
+        }
+
+        // sorting
+        items.sort((a,b) => {
+          const k = sortState.key;
+          const dir = sortState.dir === 'asc' ? 1 : -1;
+          if(k === 'tutar'){
+            return (Number(a.tutar) - Number(b.tutar)) * dir;
+          }
+          if(k === 'tarih'){
+            return (new Date(a.tarih) - new Date(b.tarih)) * dir;
+          }
+          const A = (a[k] || '').toString().toLowerCase();
+          const B = (b[k] || '').toString().toLowerCase();
+          return A < B ? -1*dir : (A > B ? 1*dir : 0);
+        });
+
+        tbody.innerHTML = '';
+        if(items.length === 0){
+          emptyHint.style.display = 'block';
+        }else{
+          empty
