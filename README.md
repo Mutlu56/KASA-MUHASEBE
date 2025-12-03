@@ -396,3 +396,28 @@ button:active{transform:translateY(1px)}
   .row{margin-bottom:10px}
   .table-section th, .table-section td{font-size:13px}
 }
+# KASA-MUHASEBE — Kasa Kontrol Fişi
+
+Bu proje, tarayıcıda çalışan basit bir kasa kontrol fişi uygulamasıdır. Veriler localStorage içinde saklanır. CSV / JSON ile dışa/içe aktarılabilir.
+
+Özellikler:
+- Gelir / Gider ekleme
+- Tarihe göre sıralama
+- Toplam Gelir, Toplam Gider, Net bakiye
+- Kayıt arama
+- CSV / JSON dışa aktarım
+- CSV / JSON içe aktarma
+- Hepsini silme (onaylı)
+
+Kurulum (yerel):
+1. Dosyaları repo köküne koyun: `index.html`, `styles.css`, `app.js`, `README.md`, `LICENSE`
+2. Tarayıcı ile `index.html` dosyasını açın.
+
+Deploy (GitHub Pages):
+1. Repo ana branch'ine (main) pushlayın.
+2. GitHub -> Repository Settings -> Pages -> Source: branch = main, folder = root (/) seçin ve kaydedin.
+3. Kısa süre sonra site `https://Mutlu56.github.io/KASA-MUHASEBE/` adresinde yayında olur.
+
+İhtiyaç halinde:
+- Backend ile veri saklama veya kullanıcı kimlik doğrulaması ekleyebilirim.
+- Otomatik deploy (GitHub Actions) için config da hazırlayabilirim.
