@@ -194,3 +194,137 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+<script>
+  let fisler = JSON.parse(localStorage.getItem("fisler")) || [];
+
+  function tabloyuGuncelle() {
+    const tbody = document.querySelector("#fisTablosu tbody");
+    tbody.innerHTML = "";
+    let gelir = 0, gider = 0;
+
+    fisler.forEach((fis, index) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${fis.tur}</td>
+        <td>${fis.aciklama}</td>
+        <td>${fis.tutar.toFixed(2)} ₺</td>
+        <td>${fis.tarih}</td>
+        <td>${fis.yetkili}</td>
+        <td><button onclick="sil(${index})">Sil</button></td>
+      `;
+      tbody.appendChild(tr);
+
+      if (fis.tur === "gelir") gelir += fis.tutar;
+      else gider += fis.tutar;
+    });
+
+    document.getElementById("topGelir").textContent = gelir.toFixed(2) + " ₺";
+    document.getElementById("topGider").textContent = gider.toFixed(2) + " ₺";
+    document.getElementById("net").textContent = (gelir - gider).toFixed(2) + " ₺";
+
+    localStorage.setItem("fisler", JSON.stringify(fisler));
+  }
+
+  document.getElementById("kaydetBtn").addEventListener("click", () => {
+    const tur = document.getElementById("tur").value;
+    const aciklama = document.getElementById("aciklama").value;
+    const tutar = parseFloat(document.getElementById("tutar").value);
+    const tarih = document.getElementById("tarih").value;
+    const yetkili = document.getElementById("yetkili").value;
+
+    if (tur && aciklama && tutar && tarih && yetkili) {
+      fisler.push({ tur, aciklama, tutar, tarih, yetkili });
+      tabloyuGuncelle();
+      document.getElementById("fisForm").reset();
+    }
+  });
+
+  document.getElementById("temizleForm").addEventListener("click", () => {
+    document.getElementById("fisForm").reset();
+  });
+
+  function sil(index) {
+    fisler.splice(index, 1);
+    tabloyuGuncelle();
+  }
+
+  document.getElementById("clearAll").addEventListener("click", () => {
+    fisler = [];
+    localStorage.removeItem("fisler");
+    tabloyuGuncelle();
+  });
+
+  tabloyuGuncelle();
+</script>name: Next.js CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Repo'yu indir
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Node.js ortamını kur
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. Bağımlılıkları yükle
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Testleri çalıştır (opsiyonel)
+      - name: Run tests
+        run: npm test
+
+      # 5. Next.js build
+      - name: Build Next.js app
+        run: npm run build
+
+      # 6. Build çıktısını artifact olarak sakla
+      - name: Upload production build
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: .next
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        run: npm run build
+
+      # Eğer statik export gerekiyorsa
+      - name: Export static site
+        run: npm run export
+
+      # GitHub Pages'e deploy
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
