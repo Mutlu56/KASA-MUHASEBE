@@ -421,3 +421,65 @@ Deploy (GitHub Pages):
 İhtiyaç halinde:
 - Backend ile veri saklama veya kullanıcı kimlik doğrulaması ekleyebilirim.
 - Otomatik deploy (GitHub Actions) için config da hazırlayabilirim.
+<script>
+  let fisler = JSON.parse(localStorage.getItem("fisler")) || [];
+
+  function tabloyuGuncelle() {
+    const tbody = document.querySelector("#fisTablosu tbody");
+    tbody.innerHTML = "";
+    let gelir = 0, gider = 0;
+
+    fisler.forEach((fis, index) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${fis.tur}</td>
+        <td>${fis.aciklama}</td>
+        <td>${fis.tutar.toFixed(2)} ₺</td>
+        <td>${fis.tarih}</td>
+        <td>${fis.yetkili}</td>
+        <td><button onclick="sil(${index})">Sil</button></td>
+      `;
+      tbody.appendChild(tr);
+
+      if (fis.tur === "gelir") gelir += fis.tutar;
+      else gider += fis.tutar;
+    });
+
+    document.getElementById("topGelir").textContent = gelir.toFixed(2) + " ₺";
+    document.getElementById("topGider").textContent = gider.toFixed(2) + " ₺";
+    document.getElementById("net").textContent = (gelir - gider).toFixed(2) + " ₺";
+
+    localStorage.setItem("fisler", JSON.stringify(fisler));
+  }
+
+  document.getElementById("kaydetBtn").addEventListener("click", () => {
+    const tur = document.getElementById("tur").value;
+    const aciklama = document.getElementById("aciklama").value;
+    const tutar = parseFloat(document.getElementById("tutar").value);
+    const tarih = document.getElementById("tarih").value;
+    const yetkili = document.getElementById("yetkili").value;
+
+    if (tur && aciklama && tutar && tarih && yetkili) {
+      fisler.push({ tur, aciklama, tutar, tarih, yetkili });
+      tabloyuGuncelle();
+      document.getElementById("fisForm").reset();
+    }
+  });
+
+  document.getElementById("temizleForm").addEventListener("click", () => {
+    document.getElementById("fisForm").reset();
+  });
+
+  function sil(index) {
+    fisler.splice(index, 1);
+    tabloyuGuncelle();
+  }
+
+  document.getElementById("clearAll").addEventListener("click", () => {
+    fisler = [];
+    localStorage.removeItem("fisler");
+    tabloyuGuncelle();
+  });
+
+  tabloyuGuncelle();
+</script>
